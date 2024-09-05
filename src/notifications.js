@@ -430,33 +430,33 @@ Notifications.merge = async function (notifications) {
 
 		differentiators.forEach((differentiator) => {
 			function typeFromLength(items) {
-				if (items.length === 2) {
-					return 'dual';
-				} else if (items.length === 3) {
-					return 'triple';
+				const types = { 2: 'dual', 3: 'triple' };
+				return types[items.length] || 'multiple';
+			}
+			
+			function determineSet(differentiator, differentiators, isolated, mergeId) {
+				if (differentiator === 0 && differentiators.length === 1) {
+					return isolated;
 				}
-				return 'multiple';
+				return isolated.filter(n => n.mergeId === `${mergeId}|${differentiator}`);
 			}
-			let set;
-			if (differentiator === 0 && differentiators.length === 1) {
-				set = isolated;
-			} else {
-				set = isolated.filter(n => n.mergeId === (`${mergeId}|${differentiator}`));
-			}
-
-			const modifyIndex = notifications.indexOf(set[0]);
-			if (modifyIndex === -1 || set.length === 1) {
+			
+			function processNotificationMerge(set, notifications, mergeId) {
+				const modifyIndex = notifications.indexOf(set[0]);
+				if (modifyIndex === -1 || set.length === 1) {
+					return notifications;
+				}
+			
+				const notifObj = notifications[modifyIndex];
+				handleNotificationType(notifObj, set, mergeId);
 				return notifications;
 			}
-			const notifObj = notifications[modifyIndex];
-			switch (mergeId) {
-				case 'new-chat': {
-					const { roomId, roomName, type, user } = set[0];
-					const isGroupChat = type === 'new-group-chat';
-					notifObj.bodyShort = isGroupChat || (roomName !== `[[modules:chat.room-id, ${roomId}]]`) ?
-						`[[notifications:new-messages-in, ${set.length}, ${roomName}]]` :
-						`[[notifications:new-messages-from, ${set.length}, ${user.displayname}]]`;
-					break;
+			
+			function handleNotificationType(notifObj, set, mergeId) {
+				switch (mergeId) {
+					case 'new-chat':
+						updateNewChatNotification(notifObj, set);
+						break;
 				}
 
 				case 'notifications:user-posted-in-public-room': {
@@ -489,8 +489,9 @@ Notifications.merge = async function (notifications) {
 					}
 
 					notifications[modifyIndex].path = set[set.length - 1].path;
-				} break;
-
+				 break;
+				}
+				
 				case 'new-register':
 					notifications[modifyIndex].bodyShort = `[[notifications:${mergeId}-multiple, ${set.length}]]`;
 					break;
